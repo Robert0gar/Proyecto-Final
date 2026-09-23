@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- PANTALLA 2: VISTA PRINCIPAL (POS Y DASHBOARD) -->
+    <!-- PANTALLA 2: VISTA PRINCIPAL -->
     <div id="main-screen" class="pos-container hidden">
         <header class="navbar">
             <h1>🥐 MigajasPaTi</h1>
@@ -39,35 +39,12 @@
             </div>
         </header>
 
-        <!-- VISTA POS (CAJERO / CAJA REGISTRADORA) -->
+        <!-- VISTA POS (CAJERO) -->
         <main id="pos-view" class="pos-layout">
             <section class="products-section">
-                <h2>Catálogo de Panadería (24 Variedades)</h2>
-                <div class="grid-products">
-                    <button class="product-card" onclick="addToCart('Concha de Vainilla', 15)"><span>🍞</span><h3>Concha Vainilla</h3><p>$15.00</p></button>
-                    <button class="product-card" onclick="addToCart('Concha de Chocolate', 15)"><span>🍞</span><h3>Concha Choco</h3><p>$15.00</p></button>
-                    <button class="product-card" onclick="addToCart('Cuerno / Croissant', 22)"><span>🥐</span><h3>Croissant Mantequilla</h3><p>$22.00</p></button>
-                    <button class="product-card" onclick="addToCart('Dona de Chocolate', 18)"><span>🍩</span><h3>Dona Chocolate</h3><p>$18.00</p></button>
-                    <button class="product-card" onclick="addToCart('Dona Glaseada', 16)"><span>🍩</span><h3>Dona Glaseada</h3><p>$16.00</p></button>
-                    <button class="product-card" onclick="addToCart('Orejota de Hojaldre', 20)"><span>🥐</span><h3>Oreja de Hojaldre</h3><p>$20.00</p></button>
-                    <button class="product-card" onclick="addToCart('Chocolatín', 26)"><span>🍫</span><h3>Chocolatín</h3><p>$26.00</p></button>
-                    <button class="product-card" onclick="addToCart('Garibaldi', 22)"><span>🧁</span><h3>Garibaldi</h3><p>$22.00</p></button>
-                    <button class="product-card" onclick="addToCart('Mantecada de Nuez', 18)"><span>🧁</span><h3>Mantecada Nuez</h3><p>$18.00</p></button>
-                    <button class="product-card" onclick="addToCart('Besito de Mermelada', 17)"><span>🍪</span><h3>Besito Mermelada</h3><p>$17.00</p></button>
-                    <button class="product-card" onclick="addToCart('Cisne Relleno de Crema', 24)"><span>🥐</span><h3>Cisne de Crema</h3><p>$24.00</p></button>
-                    <button class="product-card" onclick="addToCart('Polvorón de Naranja', 14)"><span>🍪</span><h3>Polvorón Naranja</h3><p>$14.00</p></button>
-                    <button class="product-card" onclick="addToCart('Bolillo Rústico', 7)"><span>🥖</span><h3>Bolillo Rústico</h3><p>$7.00</p></button>
-                    <button class="product-card" onclick="addToCart('Telera Tradicional', 8)"><span>🥖</span><h3>Telera</h3><p>$8.00</p></button>
-                    <button class="product-card" onclick="addToCart('Baguette Artesanal', 28)"><span>🥖</span><h3>Baguette Artesanal</h3><p>$28.00</p></button>
-                    <button class="product-card" onclick="addToCart('Pan de Masamadre 500g', 65)"><span>🍞</span><h3>Pan Masamadre</h3><p>$65.00</p></button>
-                    <button class="product-card" onclick="addToCart('Brioche Individual', 25)"><span>🍞</span><h3>Pan Brioche</h3><p>$25.00</p></button>
-                    <button class="product-card" onclick="addToCart('Pastel Tres Leches (Rebanada)', 48)"><span>🍰</span><h3>Pastel Tres Leches</h3><p>$48.00</p></button>
-                    <button class="product-card" onclick="addToCart('Pastel de Fresa (Rebanada)', 45)"><span>🍰</span><h3>Pastel Fresa</h3><p>$45.00</p></button>
-                    <button class="product-card" onclick="addToCart('Tartaleta de Frutas', 42)"><span>🥧</span><h3>Tartaleta Frutas</h3><p>$42.00</p></button>
-                    <button class="product-card" onclick="addToCart('Cheesecake de Zarzamora', 50)"><span>🍰</span><h3>Cheesecake Zarzamora</h3><p>$50.00</p></button>
-                    <button class="product-card" onclick="addToCart('Café Americano 12oz', 32)"><span>☕</span><h3>Café Americano</h3><p>$32.00</p></button>
-                    <button class="product-card" onclick="addToCart('Capuchino Vainilla 12oz', 45)"><span>☕</span><h3>Capuchino Vainilla</h3><p>$45.00</p></button>
-                    <button class="product-card" onclick="addToCart('Chocolate Caliente 12oz', 38)"><span>🍫</span><h3>Chocolate Caliente</h3><p>$38.00</p></button>
+                <h2>Catálogo e Inventario de Panes</h2>
+                <div class="grid-products" id="products-container">
+                    <!-- Productos dinámicos desde SQLite -->
                 </div>
             </section>
 
@@ -83,45 +60,87 @@
             </section>
         </main>
 
-        <!-- VISTA DASHBOARD ADMIN (SOLO GERENTE) -->
+        <!-- VISTA DASHBOARD ADMIN (GERENTE) -->
         <main id="admin-view" class="admin-layout hidden">
-            <h2>📊 Panel de Administración y Ventas</h2>
+            <div class="admin-header">
+                <h2>📊 Panel de Administración y Producción</h2>
+                <button class="btn-danger" onclick="closeDay()">🌙 Acabar Día y Generar Corte</button>
+            </div>
             
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <h3>Total Recaudado</h3>
+                    <h3>Recaudado Hoy</h3>
                     <p class="metric-value" id="total-revenue">$0.00</p>
                 </div>
                 <div class="metric-card">
-                    <h3>Total de Tickets</h3>
+                    <h3>Tickets del Día</h3>
                     <p class="metric-value" id="total-tickets">0</p>
                 </div>
                 <div class="metric-card">
-                    <h3>Producto Más Vendido</h3>
+                    <h3>Más Vendido Hoy</h3>
                     <p class="metric-value" id="top-product">---</p>
                 </div>
             </div>
 
-            <div class="admin-details">
+            <div class="admin-grid-forms">
+                <!-- FORMULARIO SURTIR STOCK -->
+                <section class="card-admin-form">
+                    <h3>🥐 Surtir Inventario (Horneado)</h3>
+                    <form id="refill-product-form">
+                        <div class="form-group">
+                            <label>Seleccionar Pan Existente</label>
+                            <select id="select-product-refill" required>
+                                <option value="">Cargando catálogo...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cantidad horneada a agregar</label>
+                            <input type="number" id="refill-stock-qty" placeholder="Ej. 10" min="1" required>
+                        </div>
+                        <button type="submit" class="btn-primary btn-block">Surtir Stock</button>
+                    </form>
+                </section>
+
+                <!-- TABLA DE VENTAS DEL DÍA -->
                 <section class="tickets-table-section">
-                    <h3>Historial de Tickets Emitidos</h3>
+                    <h3>Historial de Ventas del Día</h3>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th># Ticket</th>
-                                <th>Fecha/Hora</th>
+                                <th>Hora</th>
                                 <th>Cajero</th>
                                 <th>Productos</th>
                                 <th>Total</th>
                             </tr>
                         </thead>
                         <tbody id="tickets-table-body">
-                            <tr><td colspan="5">No se han registrado ventas en esta sesión.</td></tr>
+                            <tr><td colspan="5">No se han registrado ventas hoy.</td></tr>
                         </tbody>
                     </table>
                 </section>
             </div>
         </main>
+    </div>
+
+    <!-- MODAL CORTE DE DÍA -->
+    <div id="close-day-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h2>🎉 Resumen de Cierre de Día</h2>
+            <p>Se ha finalizado la jornada laboral con éxito.</p>
+            
+            <div class="summary-box">
+                <p><strong>Total Recaudado:</strong> $<span id="modal-revenue">0.00</span></p>
+                <p><strong>Tickets Emitidos:</strong> <span id="modal-tickets">0</span></p>
+                <hr>
+                <h4>Detalle de Panes Vendidos Hoy:</h4>
+                <ul id="modal-product-list">
+                    <!-- Lista de productos vendidos -->
+                </ul>
+            </div>
+
+            <button class="btn-primary btn-block" onclick="dismissModal()">Aceptar y Continuar</button>
+        </div>
     </div>
 
     <script src="app.js"></script>

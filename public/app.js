@@ -3,8 +3,50 @@ let total = 0;
 let currentUser = null;
 let currentRole = null;
 let isViewingAdminPanel = false;
+let globalProductsList = [];
 
-// Manejo del Login
+async function loadProductsFromDB() {
+    try {
+        const response = await fetch('/api/products');
+        globalProductsList = await response.json();
+        
+        const container = document.getElementById('products-container');
+        container.innerHTML = globalProductsList.map(prod => `
+            <button class="product-card ${prod.stock === 0 ? 'out-of-stock' : ''}" 
+                    onclick="addToCart('${prod.name}', ${prod.price})" 
+                    ${prod.stock === 0 ? 'disabled' : ''}>
+                <div class="product-img-container">
+                    <img src="${prod.image}" alt="${prod.name}" class="product-img">
+                </div>
+                <h3>${prod.name}</h3>
+                <p>$${prod.price.toFixed(2)}</p>
+                <small class="stock-tag">${prod.stock > 0 ? `Stock: ${prod.stock}` : 'AGOTADO'}</small>
+            </button>
+        `).join('');
+
+        populateRefillSelect();
+    } catch (err) {
+        console.error('Error cargando catálogo desde la BD:', err);
+    }
+}
+
+// Poblar desplegable de productos existentes
+function populateRefillSelect() {
+    const select = document.getElementById('select-product-refill');
+    if (!select) return;
+
+    if (globalProductsList.length === 0) {
+        select.innerHTML = '<option value="">No hay productos disponibles</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">-- Selecciona un pan --</option>' + 
+        globalProductsList.map(prod => `
+            <option value="${prod.id}">${prod.emoji} ${prod.name} (Stock actual: ${prod.stock})</option>
+        `).join('');
+}
+
+// Login
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -38,24 +80,23 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     }
 });
 
-// Inicializar sesión según rol
 function initUserSession() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     document.getElementById('user-display').textContent = `Usuario: ${currentUser} (${currentRole})`;
 
-    const toggleBtn = document.getElementById('view-toggle-btn');
+    loadProductsFromDB();
 
+    const toggleBtn = document.getElementById('view-toggle-btn');
     if (currentRole === 'administrador') {
         toggleBtn.classList.remove('hidden');
-        showAdminDashboard(); // El admin entra directo a ver reportes
+        showAdminDashboard();
     } else {
         toggleBtn.classList.add('hidden');
-        showPOSView(); // El cajero entra directo a cobrar
+        showPOSView();
     }
 }
 
-// Alternar entre POS y Dashboard para Admin
 function toggleAdminView() {
     if (isViewingAdminPanel) {
         showPOSView();
@@ -69,6 +110,7 @@ function showPOSView() {
     document.getElementById('pos-view').classList.remove('hidden');
     document.getElementById('admin-view').classList.add('hidden');
     document.getElementById('view-toggle-btn').textContent = "Ver Reportes Admin";
+    loadProductsFromDB();
 }
 
 async function showAdminDashboard() {
@@ -78,16 +120,15 @@ async function showAdminDashboard() {
     document.getElementById('view-toggle-btn').textContent = "Ir a Caja Registradora";
     
     await fetchSalesReports();
+    populateRefillSelect();
 }
 
-// Agregar al carrito
 function addToCart(name, price) {
     cart.push({ name, price });
     total += price;
     renderCart();
 }
 
-// Renderizar carrito
 function renderCart() {
     const cartContainer = document.getElementById('cart-items');
     const totalSpan = document.getElementById('cart-total');
@@ -106,7 +147,6 @@ function renderCart() {
     totalSpan.textContent = total.toFixed(2);
 }
 
-// Cobrar e enviar al servidor
 async function checkout() {
     if (cart.length === 0) {
         alert('Agrega al menos un producto al carrito');
@@ -124,20 +164,22 @@ async function checkout() {
             })
         });
 
+        const data = await response.json();
+
         if (response.ok) {
-            alert(`¡Venta procesada con éxito!\nTotal cobrado: $${total.toFixed(2)}`);
+            alert(`¡Venta realizada!\nTotal cobrado: $${total.toFixed(2)}`);
             cart = [];
             total = 0;
             renderCart();
+            loadProductsFromDB();
         } else {
-            alert('Error al procesar la venta en el servidor');
+            alert(data.message || 'Error al procesar la venta');
         }
     } catch (err) {
         alert('Error de conexión al guardar la venta');
     }
 }
 
-// Consultar datos de reportes para el Admin
 async function fetchSalesReports() {
     try {
         const response = await fetch('/api/sales');
@@ -150,7 +192,7 @@ async function fetchSalesReports() {
         const tableBody = document.getElementById('tickets-table-body');
 
         if (sales.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se han registrado ventas.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay ventas hoy.</td></tr>';
             document.getElementById('total-revenue').textContent = '$0.00';
             document.getElementById('total-tickets').textContent = '0';
             document.getElementById('top-product').textContent = '---';
@@ -176,7 +218,6 @@ async function fetchSalesReports() {
             `;
         }).join('');
 
-        // Calcular el producto más vendido
         let topProd = '---';
         let maxQty = 0;
         for (const [prod, qty] of Object.entries(productCounts)) {
@@ -193,6 +234,72 @@ async function fetchSalesReports() {
     } catch (err) {
         console.error('Error al obtener reportes:', err);
     }
+}
+
+// SURTIR STOCK DESDE EL PANEL DE ADMINISTRADOR
+document.getElementById('refill-product-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const productId = document.getElementById('select-product-refill').value;
+    const stock = parseInt(document.getElementById('refill-stock-qty').value);
+
+    try {
+        const response = await fetch('/api/products/refill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, stock })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message);
+            document.getElementById('refill-product-form').reset();
+            await loadProductsFromDB();
+        } else {
+            alert(data.message || 'Error al surtir el producto');
+        }
+    } catch (err) {
+        alert('Error de conexión al actualizar el inventario');
+    }
+});
+
+// ACABAR DÍA (CORTE)
+async function closeDay() {
+    if (!confirm('¿Estás seguro de finalizar la jornada? Se generará el corte del día.')) return;
+
+    try {
+        const response = await fetch('/api/sales/close-day', { method: 'POST' });
+        const data = await response.json();
+
+        if (response.ok) {
+            const summary = data.summary;
+            document.getElementById('modal-revenue').textContent = summary.totalRevenue.toFixed(2);
+            document.getElementById('modal-tickets').textContent = summary.totalTickets;
+
+            const listContainer = document.getElementById('modal-product-list');
+            const entries = Object.entries(summary.productSummary);
+
+            if (entries.length === 0) {
+                listContainer.innerHTML = '<li><em>Sin ventas registradas en esta jornada.</em></li>';
+            } else {
+                listContainer.innerHTML = entries
+                    .map(([prod, qty]) => `<li>• <strong>${prod}</strong>: ${qty} piezas vendidas</li>`)
+                    .join('');
+            }
+
+            document.getElementById('close-day-modal').classList.remove('hidden');
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        alert('Error al cerrar el día');
+    }
+}
+
+function dismissModal() {
+    document.getElementById('close-day-modal').classList.add('hidden');
+    fetchSalesReports();
 }
 
 // Cerrar sesión
