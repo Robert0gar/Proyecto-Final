@@ -101,25 +101,76 @@
                     </form>
                 </section>
 
-                <!-- TABLA DE VENTAS DEL DÍA -->
-                <section class="tickets-table-section">
-                    <h3>Historial de Ventas del Día</h3>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th># Ticket</th>
-                                <th>Hora</th>
-                                <th>Cajero</th>
-                                <th>Productos</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tickets-table-body">
-                            <tr><td colspan="5">No se han registrado ventas hoy.</td></tr>
-                        </tbody>
-                    </table>
+                <!-- FORMULARIO REGISTRAR MERMA -->
+                <section class="card-admin-form">
+                    <h3>🗑️ Registrar Merma de Pan</h3>
+                    <form id="waste-product-form">
+                        <div class="form-group">
+                            <label>Seleccionar Pan Mermado</label>
+                            <select id="select-product-waste" required>
+                                <option value="">Cargando catálogo...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cantidad a descartar</label>
+                            <input type="number" id="waste-qty" placeholder="Ej. 3" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Motivo de Merma</label>
+                            <select id="waste-reason" required>
+                                <option value="No vendido / Duro">No vendido / Duro</option>
+                                <option value="Quemado / Defectuoso">Quemado / Defectuoso</option>
+                                <option value="Caída / Accidente">Caída / Accidente</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-danger btn-block">Registrar Merma</button>
+                    </form>
                 </section>
             </div>
+
+            <!-- TABLA DE VENTAS DEL DÍA -->
+            <section class="tickets-table-section" style="margin-top: 25px;">
+                <h3>Historial de Ventas del Día</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th># Ticket</th>
+                            <th>Hora</th>
+                            <th>Cajero</th>
+                            <th>Productos</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tickets-table-body">
+                        <tr><td colspan="5">No se han registrado ventas hoy.</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- SECCIÓN: ASISTENTE DE PREDICCIÓN DE PRODUCCIÓN (DSS) -->
+            <section class="tickets-table-section" style="margin-top: 25px;">
+                <h3>🤖 Asistente de Predicción de Producción (Sugerencia de Horneado)</h3>
+                <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">
+                    Cálculo basado en historial de ventas, promedio diario y nivel de mermas registradas.
+                </p>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Stock Actual</th>
+                            <th>Ventas Totales</th>
+                            <th>Merma Registrada</th>
+                            <th>Promedio Diario</th>
+                            <th>🔥 Sugerencia Horneado</th>
+                            <th>Diagnóstico</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recommendations-table-body">
+                        <tr><td colspan="8">Cargando recomendaciones de producción...</td></tr>
+                    </tbody>
+                </table>
+            </section>
         </main>
     </div>
 

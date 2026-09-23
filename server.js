@@ -141,6 +141,133 @@ app.post('/api/sales/close-day', (req, res) => {
     });
 });
 
+// =========================================================
+// 🚀 NUVAS RUTAS: MERMAS Y PREDICCIÓN DE PRODUCCIÓN
+// =========================================================
+
+// POST /api/waste - Registrar merma de productos
+app.post('/api/waste', (req, res) => {
+    const { productId, quantity, reason } = req.body;
+
+    if (!productId || !quantity || parseInt(quantity) <= 0) {
+        return res.status(400).json({ message: "Selecciona un producto y una cantidad válida mayor a 0." });
+    }
+
+    const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
+    if (!prod) {
+        return res.status(404).json({ message: "El producto seleccionado no existe." });
+    }
+
+    const qty = parseInt(quantity);
+
+    // Guardar en log de mermas y descontar stock actual
+    const recordWaste = db.transaction(() => {
+        db.prepare('INSERT INTO waste_logs (product_id, product_name, quantity, reason) VALUES (?, ?, ?, ?)').run(prod.id, prod.name, qty, reason || 'Dañado/Vencido');
+        db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?').run(qty, prod.id);
+    });
+
+    try {
+        recordWaste();
+        res.json({ message: `Se registraron ${qty} unidades mermadas de "${prod.name}".` });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.get('/api/reports/production-recommendation', (req, res) => {
+    try {
+        // 1. Obtener todos los productos
+        const products = db.prepare('SELECT * FROM products').all();
+
+        if (!products || products.length === 0) {
+            return res.json({ success: true, recommendations: [] });
+        }
+
+        // 2. Obtener todas las piezas vendidas de la tabla sale_items
+        let allSaleItems = [];
+        try {
+            allSaleItems = db.prepare('SELECT * FROM sale_items').all();
+        } catch (e) {
+            console.log('Tabla sale_items vacía o sin leer:', e.message);
+        }
+
+        // 3. Obtener mermas
+        let allWasteLogs = [];
+        try {
+            allWasteLogs = db.prepare('SELECT * FROM waste_logs').all();
+        } catch (e) {
+            console.log('Tabla waste_logs vacía o sin leer:', e.message);
+        }
+
+        // 4. Calcular días activos de venta
+        let activeDays = 1;
+        try {
+            const daysRow = db.prepare('SELECT COUNT(DISTINCT DATE(created_at)) as days FROM sales').get();
+            if (daysRow && daysRow.days > 0) activeDays = daysRow.days;
+        } catch (e) {
+            activeDays = 1;
+        }
+
+        // 5. Mapear cada producto de forma segura
+        const recommendations = products.map(prod => {
+            // Contar cuántas veces se vendió este producto (por nombre o id)
+            const soldItems = allSaleItems.filter(item => 
+                (item.product_name && item.product_name === prod.name) || 
+                (item.product_id && item.product_id === prod.id)
+            );
+
+            // Sumar cantidades vendidas
+            const totalSold = soldItems.reduce((acc, curr) => acc + (curr.quantity || 1), 0);
+
+            // Sumar mermas
+            const wasteItems = allWasteLogs.filter(w => w.product_id === prod.id);
+            const totalWasted = wasteItems.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+
+            // Promedio Diario
+            const avgDailySales = parseFloat((totalSold / activeDays).toFixed(1));
+
+            // LÓGICA DE DIAGNÓSTICO Y RECOMENDACIÓN DE HORNEADO (DSS)
+            let recommendedBaking = 0;
+            let status = 'Normal';
+            let alertColor = '#28a745'; // Verde
+
+            if (prod.stock <= 0) {
+                status = '🔥 AGOTADO / Crítico';
+                alertColor = '#dc3545'; // Rojo
+                
+                // Si vendió, sugiere lo vendido o el promedio + margen de seguridad
+                recommendedBaking = Math.max(totalSold, Math.ceil(avgDailySales * 1.2), 5);
+            } else if (prod.stock <= 2) {
+                status = '⚠️ Stock Bajo';
+                alertColor = '#ffc107'; // Amarillo
+                const target = Math.max(totalSold, Math.ceil(avgDailySales * 1.2), 6);
+                recommendedBaking = Math.max(0, target - prod.stock);
+            } else {
+                // Stock Normal
+                const target = Math.max(totalSold, Math.ceil(avgDailySales));
+                recommendedBaking = Math.max(0, target - prod.stock);
+            }
+
+            return {
+                id: prod.id,
+                name: prod.name,
+                category: prod.category || 'Panadería',
+                current_stock: prod.stock,
+                total_sold: totalSold,
+                total_wasted: totalWasted,
+                avg_daily_sales: avgDailySales,
+                recommended_baking: recommendedBaking,
+                status: status,
+                alert_color: alertColor
+            };
+        });
+
+        res.json({ success: true, recommendations });
+    } catch (err) {
+        console.error('Error crítico al calcular recomendaciones:', err);
+        res.status(500).json({ success: false, message: 'Error en el servidor al procesar predicciones' });
+    }
+});
 module.exports = app;
 
 if (require.main === module) {

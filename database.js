@@ -38,8 +38,17 @@ db.exec(`
         price REAL NOT NULL,
         FOREIGN KEY (sale_id) REFERENCES sales (id)
     );
-`);
 
+    CREATE TABLE IF NOT EXISTS waste_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER,
+        product_name TEXT,
+        quantity INTEGER,
+        reason TEXT,
+        date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(product_id) REFERENCES products(id)
+    );
+`);
 // Precargar Datos Iniciales con imágenes específicas
 const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
 
