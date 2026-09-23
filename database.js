@@ -53,36 +53,36 @@ if (userCount === 0) {
     
     const initialProducts = [
         // Pan Dulce
-        ['Concha Vainilla', 15.00, 'Pan Dulce', '🍞', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80', 10],
-        ['Concha Choco', 15.00, 'Pan Dulce', '🍞', 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&w=400&q=80', 10],
-        ['Croissant Mantequilla', 22.00, 'Pan Dulce', '🥐', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=400&q=80', 10],
-        ['Dona Chocolate', 18.00, 'Pan Dulce', '🍩', 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=400&q=80', 10],
-        ['Dona Glaseada', 16.00, 'Pan Dulce', '🍩', 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=400&q=80', 10],
-        ['Oreja de Hojaldre', 20.00, 'Pan Dulce', '🥐', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80', 10],
-        ['Chocolatín', 26.00, 'Pan Dulce', '🍫', 'https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=400&q=80', 10],
-        ['Garibaldi', 22.00, 'Pan Dulce', '🧁', 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80', 10],
-        ['Mantecada Nuez', 18.00, 'Pan Dulce', '🧁', 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?auto=format&fit=crop&w=400&q=80', 10],
-        ['Besito Mermelada', 17.00, 'Pan Dulce', '🍪', 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80', 10],
-        ['Cisne de Crema', 24.00, 'Pan Dulce', '🥐', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80', 10],
-        ['Polvorón Naranja', 14.00, 'Pan Dulce', '🍪', 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80', 10],
+        ['Concha Vainilla', 15.00, 'Pan Dulce', '🍞','/images/concha-vainilla.jpg' , 10],
+        ['Concha Choco', 15.00, 'Pan Dulce', '🍞','/images/concha-chocolate.jpg' , 10],
+        ['Croissant Mantequilla', 22.00, 'Pan Dulce', '🥐', '/images/croissant-mantequilla.webp', 10],
+        ['Dona Chocolate', 18.00, 'Pan Dulce', '🍩', '/images/dona-chocolate.webp', 10],
+        ['Dona Glaseada', 16.00, 'Pan Dulce', '🍩', '/images/dona-glaseada.webp', 10],
+        ['Oreja de Hojaldre', 20.00, 'Pan Dulce', '🥐', '/images/oreja.webp', 10],
+        ['Chocolatín', 26.00, 'Pan Dulce', '🍫', '/images/chocolatin.jpg', 10],
+        ['Polvorón', 15.00, 'Pan Dulce', '🍪', '/images/polvoron.jpg', 10],
+        ['Mantecada Nuez', 18.00, 'Pan Dulce', '🧁', '/images/mantecada-nuez.jpg', 10],
+        ['Besito Mermelada', 17.00, 'Pan Dulce', '🍪', '/images/beso-mermelada.jpg', 10],
+        ['Marranito', 24.00, 'Pan Dulce', '🥐', '/images/marranito.webp', 10],
+        ['Tomate', 25.00, 'Pan Dulce', '🧁', '/images/tomate.jpg', 10],
 
         // Pan Blanco
-        ['Bolillo Rústico', 7.00, 'Pan Blanco', '🥖', 'https://images.unsplash.com/photo-1586444248902-2f64eddc1320?auto=format&fit=crop&w=400&q=80', 10],
-        ['Telera', 8.00, 'Pan Blanco', '🥖', 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=400&q=80', 10],
-        ['Baguette Artesanal', 28.00, 'Pan Blanco', '🥖', 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=400&q=80', 10],
-        ['Pan Masamadre', 65.00, 'Pan Blanco', '🍞', 'https://images.unsplash.com/photo-1585478259715-876acc5be8eb?auto=format&fit=crop&w=400&q=80', 10],
-        ['Pan Brioche', 25.00, 'Pan Blanco', '🍞', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80', 10],
+        ['Bolillo Rústico', 7.00, 'Pan Blanco', '🥖','/images/bolillo.jpg' , 10],
+        ['Telera', 8.00, 'Pan Blanco', '🥖', '/images/telera.jpg', 10],
+        ['Baguette Artesanal', 28.00, 'Pan Blanco', '🥖', '/images/baguette.jpeg', 10],
+        ['Pan Masamadre', 65.00, 'Pan Blanco', '🍞', '/images/pan-masamadre.jpg', 10],
+        ['Pan Brioche', 25.00, 'Pan Blanco', '🍞', '/images/pan-brioche.webp', 10],
 
         // Repostería
-        ['Pastel Tres Leches', 48.00, 'Repostería', '🍰', 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=400&q=80', 10],
-        ['Pastel Fresa', 45.00, 'Repostería', '🍰', 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=400&q=80', 10],
-        ['Tartaleta Frutas', 42.00, 'Repostería', '🥧', 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=400&q=80', 10],
-        ['Cheesecake Zarzamora', 50.00, 'Repostería', '🍰', 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=400&q=80', 10],
+        ['Pastel Tres Leches', 48.00, 'Repostería', '🍰', '/images/tres-leches.jpeg', 10],
+        ['Pastel Fresa', 45.00, 'Repostería', '🍰', '/images/pastel-fresa.jpg', 10],
+        ['Tartaleta Frutas', 42.00, 'Repostería', '🥧', '/images/tarta-frutas.jpg', 10],
+        ['Cheesecake Zarzamora', 50.00, 'Repostería', '🍰', '/images/zarzamora.webp', 10],
 
         // Bebidas
-        ['Café Americano', 32.00, 'Bebidas', '☕', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80', 10],
-        ['Capuchino Vainilla', 45.00, 'Bebidas', '☕', 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=400&q=80', 10],
-        ['Chocolate Caliente', 38.00, 'Bebidas', '🍫', 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=400&q=80', 10]
+        ['Café Americano', 32.00, 'Bebidas', '☕', '/images/americano.jpg', 10],
+        ['Capuchino Vainilla', 45.00, 'Bebidas', '☕', '/images/capuccino.jpg', 10],
+        ['Chocolate Caliente', 38.00, 'Bebidas', '🍫', '/images/chocolate-caliente.png', 10]
     ];
 
     for (const prod of initialProducts) {
