@@ -1,11 +1,39 @@
-let cart = [];
+let cart = []; // Estructura: [{ id, name, price, qty }]
 let total = 0;
 let currentUser = null;
 let currentRole = null;
 let isViewingAdminPanel = false;
 let globalProductsList = [];
 
+// ==========================================================================
+// PANTALLA EMERGENTE PERSONALIZADA (MODAL REEMPLAZO DE ALERT)
+// ==========================================================================
+function showCustomAlert(message, title = 'Notificación', icon = '💡') {
+    const alertModal = document.getElementById('custom-alert-modal');
+    const alertTitle = document.getElementById('alert-title');
+    const alertMsg = document.getElementById('alert-message');
+    const alertIcon = document.getElementById('alert-icon');
+
+    if (alertModal && alertTitle && alertMsg && alertIcon) {
+        alertTitle.textContent = title;
+        alertMsg.textContent = message;
+        alertIcon.textContent = icon;
+        alertModal.classList.remove('hidden');
+    } else {
+        alert(message);
+    }
+}
+
+function closeCustomAlert() {
+    const alertModal = document.getElementById('custom-alert-modal');
+    if (alertModal) {
+        alertModal.classList.add('hidden');
+    }
+}
+
+// ==========================================================================
 // CARGAR PRODUCTOS DESDE LA BASE DE DATOS
+// ==========================================================================
 async function loadProductsFromDB() {
     try {
         const response = await fetch('/api/products');
@@ -18,7 +46,7 @@ async function loadProductsFromDB() {
                         onclick="addToCart(${prod.id})" 
                         ${prod.stock <= 0 ? 'disabled' : ''}>
                     <div class="product-img-container">
-                        <img src="${prod.image}" alt="${prod.name}" class="product-img">
+                        <img src="${prod.image || 'images/default-bread.png'}" alt="${prod.name}" class="product-img">
                     </div>
                     <h3>${prod.name}</h3>
                     <p>$${prod.price.toFixed(2)}</p>
@@ -34,7 +62,9 @@ async function loadProductsFromDB() {
     }
 }
 
-// AGREGAR AL CARRITO (CON VALIDACIÓN ESTRICTA DE STOCK)
+// ==========================================================================
+// CARRITO DE COMPRAS CON EDICIÓN Y ELIMINACIÓN
+// ==========================================================================
 function addToCart(productId) {
     const id = parseInt(productId);
     const product = globalProductsList.find(p => p.id === id);
@@ -44,20 +74,80 @@ function addToCart(productId) {
         return;
     }
 
-    // Contar cuántos de este mismo producto ya están en el carrito
-    const inCartCount = cart.filter(item => item.id === id).length;
+    const cartItem = cart.find(item => item.id === id);
+    const currentQtyInCart = cartItem ? cartItem.qty : 0;
 
-    if (inCartCount >= product.stock) {
-        alert(`¡Stock insuficiente! Solo hay ${product.stock} piezas disponibles de ${product.name}.`);
+    if (currentQtyInCart >= product.stock) {
+        showCustomAlert(
+            `Solo hay ${product.stock} piezas disponibles de "${product.name}".`, 
+            'Stock Insuficiente', 
+            '⚠️'
+        );
         return;
     }
 
-    cart.push({ id: product.id, name: product.name, price: product.price });
-    total += product.price;
+    if (cartItem) {
+        cartItem.qty += 1;
+    } else {
+        cart.push({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            qty: 1
+        });
+    }
+
+    recalculateTotal();
     renderCart();
 }
 
-// RENDERIZAR CARRITO
+function updateCartQty(productId, change) {
+    const id = parseInt(productId);
+    const cartItem = cart.find(item => item.id === id);
+    const product = globalProductsList.find(p => p.id === id);
+
+    if (!cartItem) return;
+
+    if (change > 0 && product) {
+        if (cartItem.qty >= product.stock) {
+            showCustomAlert(
+                `No puedes agregar más. Stock disponible: ${product.stock}`, 
+                'Límite de Stock', 
+                '⚠️'
+            );
+            return;
+        }
+        cartItem.qty += 1;
+    } else if (change < 0) {
+        cartItem.qty -= 1;
+        if (cartItem.qty <= 0) {
+            removeFromCart(id);
+            return;
+        }
+    }
+
+    recalculateTotal();
+    renderCart();
+}
+
+function removeFromCart(productId) {
+    const id = parseInt(productId);
+    cart = cart.filter(item => item.id !== id);
+    recalculateTotal();
+    renderCart();
+}
+
+function clearCart() {
+    if (cart.length === 0) return;
+    cart = [];
+    total = 0;
+    renderCart();
+}
+
+function recalculateTotal() {
+    total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+}
+
 function renderCart() {
     const cartContainer = document.getElementById('cart-items');
     const totalSpan = document.getElementById('cart-total');
@@ -67,10 +157,23 @@ function renderCart() {
     if (cart.length === 0) {
         cartContainer.innerHTML = '<p class="empty-cart">No hay productos agregados</p>';
     } else {
-        cartContainer.innerHTML = cart.map(item => `
+        cartContainer.innerHTML = `
+            <div class="cart-header-actions">
+                <button class="btn-clear-cart" onclick="clearCart()">🗑️ Vaciar Carrito</button>
+            </div>
+        ` + cart.map(item => `
             <div class="cart-item">
-                <span>${item.name}</span>
-                <span>$${item.price.toFixed(2)}</span>
+                <div class="cart-item-info">
+                    <span class="cart-item-title">${item.name}</span>
+                    <span class="cart-item-unit-price">$${item.price.toFixed(2)} c/u</span>
+                </div>
+                <div class="cart-item-controls">
+                    <button class="btn-qty" onclick="updateCartQty(${item.id}, -1)">-</button>
+                    <span class="cart-item-qty">${item.qty}</span>
+                    <button class="btn-qty" onclick="updateCartQty(${item.id}, 1)">+</button>
+                    <span class="cart-item-subtotal">$${(item.price * item.qty).toFixed(2)}</span>
+                    <button class="btn-remove-item" onclick="removeFromCart(${item.id})" title="Cancelar este pan">❌</button>
+                </div>
             </div>
         `).join('');
     }
@@ -78,19 +181,26 @@ function renderCart() {
     totalSpan.textContent = total.toFixed(2);
 }
 
-// PROCESAR VENTA EN CAJA (CHECKOUT)
 async function checkout() {
     if (cart.length === 0) {
-        alert('Agrega al menos un producto al carrito');
+        showCustomAlert('Agrega al menos un producto al carrito.', 'Carrito Vacío', '🛒');
         return;
     }
+
+    // Convertir el carrito agrupado a la lista plana requerida por el backend si es necesario
+    const flatItems = [];
+    cart.forEach(item => {
+        for (let i = 0; i < item.qty; i++) {
+            flatItems.push({ id: item.id, name: item.name, price: item.price });
+        }
+    });
 
     try {
         const response = await fetch('/api/sales', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                items: cart,
+                items: flatItems,
                 total: total,
                 cashier: currentUser || 'Cajero'
             })
@@ -99,21 +209,27 @@ async function checkout() {
         const data = await response.json();
 
         if (response.ok) {
-            alert(`¡Venta realizada con éxito!\nTotal cobrado: $${total.toFixed(2)}`);
+            showCustomAlert(
+                `Venta registrada con éxito.\nTotal cobrado: $${total.toFixed(2)}`, 
+                '¡Venta Realizada!', 
+                '🎉'
+            );
             cart = [];
             total = 0;
             renderCart();
             await loadProductsFromDB();
         } else {
-            alert(data.message || 'Error al procesar la venta');
+            showCustomAlert(data.message || 'Error al procesar la venta.', 'Error', '❌');
         }
     } catch (err) {
         console.error('Error en checkout:', err);
-        alert('Error de conexión al guardar la venta');
+        showCustomAlert('Error de conexión al guardar la venta.', 'Error de Conexión', '🌐');
     }
 }
 
-// DESPLEGABLES DE PRODUCTOS (SURTIR Y MERMA)
+// ==========================================================================
+// DESPLEGABLES DE FORMULARIOS
+// ==========================================================================
 function populateRefillSelect() {
     const select = document.getElementById('select-product-refill');
     if (!select) return;
@@ -144,7 +260,9 @@ function populateWasteSelect() {
         `).join('');
 }
 
-// INICIO DE SESIÓN
+// ==========================================================================
+// AUTENTICACIÓN Y SESIÓN
+// ==========================================================================
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -219,10 +337,13 @@ async function showAdminDashboard() {
     
     await loadProductsFromDB();
     await fetchSalesReports();
+    await fetchProfitabilityMatrix();
     await fetchProductionRecommendations();
 }
 
-// REPORTE DE VENTAS
+// ==========================================================================
+// REPORTES Y MÓDULOS DE DECISIÓN (DSS)
+// ==========================================================================
 async function fetchSalesReports() {
     try {
         const response = await fetch('/api/sales');
@@ -235,31 +356,33 @@ async function fetchSalesReports() {
         const tableBody = document.getElementById('tickets-table-body');
 
         if (sales.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay ventas hoy.</td></tr>';
+            if (tableBody) tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay ventas hoy.</td></tr>';
             document.getElementById('total-revenue').textContent = '$0.00';
             document.getElementById('total-tickets').textContent = '0';
             document.getElementById('top-product').textContent = '---';
             return;
         }
 
-        tableBody.innerHTML = sales.map(sale => {
-            revenue += sale.total;
-            
-            const itemList = sale.items.map(i => {
-                productCounts[i.name] = (productCounts[i.name] || 0) + 1;
-                return i.name;
-            }).join(', ');
+        if (tableBody) {
+            tableBody.innerHTML = sales.map(sale => {
+                revenue += sale.total;
+                
+                const itemList = sale.items.map(i => {
+                    productCounts[i.name] = (productCounts[i.name] || 0) + 1;
+                    return i.name;
+                }).join(', ');
 
-            return `
-                <tr>
-                    <td>#${sale.id}</td>
-                    <td>${sale.date}</td>
-                    <td>${sale.cashier}</td>
-                    <td>${itemList}</td>
-                    <td><strong>$${sale.total.toFixed(2)}</strong></td>
-                </tr>
-            `;
-        }).join('');
+                return `
+                    <tr>
+                        <td>#${sale.id}</td>
+                        <td>${sale.date}</td>
+                        <td>${sale.cashier}</td>
+                        <td>${itemList}</td>
+                        <td><strong>$${sale.total.toFixed(2)}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        }
 
         let topProd = '---';
         let maxQty = 0;
@@ -279,7 +402,37 @@ async function fetchSalesReports() {
     }
 }
 
-// PREDICCIONES Y RECOMENDACIONES DE PRODUCCIÓN (DSS)
+async function fetchProfitabilityMatrix() {
+    const tableBody = document.getElementById('profitability-matrix-body');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch('/api/reports/profitability-matrix');
+        const data = await response.json();
+
+        if (data.success && data.matrix.length > 0) {
+            tableBody.innerHTML = data.matrix.map(item => `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">${item.name}</td>
+                    <td style="padding: 10px; color: #28a745; font-weight: bold;">${item.total_sold} pzas</td>
+                    <td style="padding: 10px; color: #dc3545; font-weight: bold;">${item.total_wasted} pzas</td>
+                    <td style="padding: 10px;">
+                        <span style="background: ${item.badge_color}; color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">
+                            ${item.classification}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; font-size: 0.9em; color: #555;">${item.action_note}</td>
+                </tr>
+            `).join('');
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 15px;">Sin datos suficientes para generar la matriz.</td></tr>';
+        }
+    } catch (err) {
+        console.error('Error al cargar matriz de rentabilidad:', err);
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Error al cargar diagnóstico.</td></tr>';
+    }
+}
+
 async function fetchProductionRecommendations() {
     const tableBody = document.getElementById('recommendations-table-body');
     if (!tableBody) return;
@@ -310,7 +463,9 @@ async function fetchProductionRecommendations() {
     }
 }
 
-// FORMULARIO DE SURTIR
+// ==========================================================================
+// ACCIONES DE REABASTECIMIENTO Y MERMA
+// ==========================================================================
 document.getElementById('refill-product-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -327,19 +482,19 @@ document.getElementById('refill-product-form').addEventListener('submit', async 
         const data = await response.json();
 
         if (response.ok) {
-            alert(data.message);
+            showCustomAlert(data.message, '¡Inventario Actualizado!', '🥖');
             document.getElementById('refill-product-form').reset();
             await loadProductsFromDB();
+            await fetchProfitabilityMatrix();
             await fetchProductionRecommendations();
         } else {
-            alert(data.message || 'Error al surtir el producto');
+            showCustomAlert(data.message || 'Error al surtir el producto.', 'Error', '❌');
         }
     } catch (err) {
-        alert('Error de conexión al actualizar el inventario');
+        showCustomAlert('Error de conexión al actualizar el inventario.', 'Error de Conexión', '🌐');
     }
 });
 
-// FORMULARIO DE MERMA
 const wasteForm = document.getElementById('waste-product-form');
 if (wasteForm) {
     wasteForm.addEventListener('submit', async (e) => {
@@ -359,20 +514,23 @@ if (wasteForm) {
             const data = await response.json();
 
             if (response.ok) {
-                alert(data.message);
+                showCustomAlert(data.message, 'Merma Registrada', '🗑️');
                 wasteForm.reset();
                 await loadProductsFromDB();
+                await fetchProfitabilityMatrix();
                 await fetchProductionRecommendations();
             } else {
-                alert(data.message || 'Error al registrar la merma');
+                showCustomAlert(data.message || 'Error al registrar la merma.', 'Error', '❌');
             }
         } catch (err) {
-            alert('Error de conexión al guardar la merma');
+            showCustomAlert('Error de conexión al guardar la merma.', 'Error de Conexión', '🌐');
         }
     });
 }
 
-// CORTE DEL DÍA
+// ==========================================================================
+// CORTE DE DÍA Y CIERRE
+// ==========================================================================
 async function closeDay() {
     if (!confirm('¿Estás seguro de finalizar la jornada? Se generará el corte del día.')) return;
 
@@ -398,20 +556,20 @@ async function closeDay() {
 
             document.getElementById('close-day-modal').classList.remove('hidden');
         } else {
-            alert(data.message);
+            showCustomAlert(data.message, 'Atención', '⚠️');
         }
     } catch (err) {
-        alert('Error al cerrar el día');
+        showCustomAlert('Error al cerrar el día.', 'Error', '❌');
     }
 }
 
 function dismissModal() {
     document.getElementById('close-day-modal').classList.add('hidden');
     fetchSalesReports();
+    fetchProfitabilityMatrix();
     fetchProductionRecommendations();
 }
 
-// CERRAR SESIÓN
 document.getElementById('logout-btn').addEventListener('click', () => {
     localStorage.clear();
     location.reload();

@@ -256,9 +256,18 @@ body {
     background-color: #ffffff;
 }
 
-.product-card span {
-    font-size: 2.2rem;
+.product-img-container {
+    width: 100%;
+    height: 110px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
     margin-bottom: 8px;
+}
+
+.product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     display: block;
 }
 
@@ -346,7 +355,7 @@ body {
 }
 
 /* ==========================================================================
-   4. PANEL DE ADMINISTRACIÓN / REPORTES
+   4. PANEL DE ADMINISTRACIÓN / REPORTES Y MODULOS DSS
    ========================================================================== */
 .admin-layout {
     padding: 25px;
@@ -394,8 +403,9 @@ body {
 
 .admin-grid-forms {
     display: grid;
-    grid-template-columns: 340px 1fr;
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
 }
 
 .card-admin-form {
@@ -410,7 +420,9 @@ body {
 .card-admin-form h3 {
     color: var(--color-primary);
     margin-bottom: 15px;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+    border-bottom: 2px solid var(--color-accent-light);
+    padding-bottom: 8px;
 }
 
 /* Tablas */
@@ -424,13 +436,14 @@ body {
 
 .tickets-table-section h3 {
     color: var(--color-primary);
-    margin-bottom: 15px;
+    margin-bottom: 5px;
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.92rem;
+    margin-top: 10px;
 }
 
 .data-table th,
@@ -447,11 +460,11 @@ body {
 }
 
 .data-table tbody tr:hover {
-    background-color: #fcf8f2;
+    background-color: #fdf8f5;
 }
 
 /* ==========================================================================
-   5. MODAL CERRAR DÍA
+   5. MODALES Y PANTALLAS EMERGENTES PERSONALIZADAS
    ========================================================================== */
 .modal-overlay {
     position: fixed;
@@ -459,12 +472,13 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(45, 31, 21, 0.6);
-    backdrop-filter: blur(4px);
+    background-color: rgba(45, 31, 21, 0.65);
+    backdrop-filter: blur(5px);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 9999;
+    animation: fadeIn 0.25s ease-out;
 }
 
 .modal-card {
@@ -477,15 +491,46 @@ body {
     border: 1px solid var(--color-border);
 }
 
-.modal-card h2 {
-    color: var(--color-primary);
-    margin-bottom: 8px;
+.custom-alert-card {
+    max-width: 420px;
+    text-align: center;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.modal-card p {
+.alert-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.custom-alert-card h3 {
+    color: var(--color-primary);
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+
+.custom-alert-card p {
+    font-size: 0.98rem;
     color: var(--color-text-muted);
-    font-size: 0.95rem;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
+    line-height: 1.4;
+    white-space: pre-line;
+}
+
+/* Animaciones de modales */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .summary-box {
@@ -523,112 +568,125 @@ body {
     padding: 4px 0;
 }
 
-/* Responsivo para pantallas pequeñas */
+/* ==========================================================================
+   6. RESPONSIVO
+   ========================================================================== */
 @media (max-width: 900px) {
     .pos-layout,
     .admin-grid-forms {
         grid-template-columns: 1fr;
     }
 }
-/* Limitar el contenedor de la imagen */
-.product-img-container {
-    width: 100%;
-    height: 110px; /* Altura fija para que todas queden parejas */
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 8px;
-}
 
-/* Ajustar la imagen dentro del contenedor */
-.product-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Evita que la foto se deforme */
-    display: block;
-}
-/* ==========================================
-   ESTILOS PARA MERMAS Y ASISTENTE DE PREDICCIÓN
-   ========================================== */
-
-/* Grid de Formularios de Administración (Surtir + Merma) */
-.admin-grid-forms {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.card-admin-form {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #e0e0e0;
-}
-
-.card-admin-form h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #333;
-    font-size: 1.15rem;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 8px;
-}
-
-/* Estilos de Tablas de Datos (Ventas y Recomendaciones) */
-.tickets-table-section {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #e0e0e0;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-    font-size: 0.95rem;
-}
-
-.data-table th, 
-.data-table td {
-    padding: 12px 10px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.data-table th {
-    background-color: #f8f9fa;
-    color: #444;
-    font-weight: 600;
-}
-
-.data-table tbody tr:hover {
-    background-color: #fdf8f5;
-}
-
-/* Botón de Peligro / Merma */
-.btn-danger {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s ease;
-}
-
-.btn-danger:hover {
-    background-color: #bd2130;
-}
-
-/* Ajustes Responsivos para Pantallas Pequeñas */
 @media (max-width: 768px) {
     .data-table {
         display: block;
         overflow-x: auto;
         white-space: nowrap;
     }
+}
+/* ==========================================================================
+   ESTILOS PARA EDICIÓN Y CANCELACIÓN EN EL CARRITO
+   ========================================================================== */
+.cart-header-actions {
+    text-align: right;
+    margin-bottom: 8px;
+}
+
+.btn-clear-cart {
+    background: transparent;
+    border: none;
+    color: var(--color-danger);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+.btn-clear-cart:hover {
+    background-color: #fde8e8;
+}
+
+.cart-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.cart-item-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cart-item-title {
+    font-weight: 600;
+    color: var(--color-primary);
+    font-size: 0.95rem;
+}
+
+.cart-item-unit-price {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.cart-item-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fdfbf7;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.btn-qty {
+    background-color: var(--color-accent-light);
+    color: var(--color-primary);
+    border: 1px solid var(--color-border);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.btn-qty:hover {
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.cart-item-qty {
+    font-weight: 700;
+    font-size: 0.95rem;
+    min-width: 20px;
+    text-align: center;
+}
+
+.cart-item-subtotal {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 0.95rem;
+}
+
+.btn-remove-item {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 2px;
+}
+
+.btn-remove-item:hover {
+    opacity: 1;
 }

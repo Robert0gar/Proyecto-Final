@@ -147,6 +147,28 @@
                 </table>
             </section>
 
+            <!-- NUEVA SECCIÓN: MATRIZ DE RENTABILIDAD VS DESPERDICIO (DSS) -->
+            <section class="tickets-table-section" style="margin-top: 25px;">
+                <h3>📈 Matriz de Rentabilidad vs. Desperdicio (DSS)</h3>
+                <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">
+                    Diagnóstico del catálogo cruzando piezas vendidas contra piezas descartadas como merma.
+                </p>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Ventas Acumuladas</th>
+                            <th>Mermas Acumuladas</th>
+                            <th>Clasificación</th>
+                            <th>Acción Sugerida</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profitability-matrix-body">
+                        <tr><td colspan="5" style="text-align: center;">Cargando matriz de rentabilidad...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
             <!-- SECCIÓN: ASISTENTE DE PREDICCIÓN DE PRODUCCIÓN (DSS) -->
             <section class="tickets-table-section" style="margin-top: 25px;">
                 <h3>🤖 Asistente de Predicción de Producción (Sugerencia de Horneado)</h3>
@@ -191,6 +213,16 @@
             </div>
 
             <button class="btn-primary btn-block" onclick="dismissModal()">Aceptar y Continuar</button>
+        </div>
+    </div>
+
+<!-- MODAL PERSONALIZADO PARA ALERTAS/NOTIFICACIONES -->
+    <div id="custom-alert-modal" class="modal-overlay hidden">
+        <div class="modal-card custom-alert-card">
+            <div class="alert-icon" id="alert-icon">💡</div>
+            <h3 id="alert-title">Notificación</h3>
+            <p id="alert-message">Mensaje del sistema...</p>
+            <button class="btn-primary btn-block" onclick="closeCustomAlert()">Aceptar</button>
         </div>
     </div>
 

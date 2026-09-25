@@ -17,10 +17,71 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// GET /api/products - Obtener catálogo de productos
+// ==========================================
+// 📦 RUTAS DE PRODUCTOS (CRUD COMPLETO)
+// ==========================================
+
+// READ: Obtener catálogo de productos
 app.get('/api/products', (req, res) => {
     const products = db.prepare('SELECT * FROM products').all();
     res.json(products);
+});
+
+// READ: Obtener un producto por ID
+app.get('/api/products/:id', (req, res) => {
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!product) return res.status(404).json({ message: "Producto no encontrado." });
+    res.json(product);
+});
+
+// CREATE: Crear nuevo producto
+app.post('/api/products', (req, res) => {
+    const { name, price, stock, category } = req.body;
+    if (!name || price === undefined || stock === undefined) {
+        return res.status(400).json({ message: "Nombre, precio y stock son requeridos." });
+    }
+
+    try {
+        const stmt = db.prepare('INSERT INTO products (name, price, stock, category) VALUES (?, ?, ?, ?)');
+        const result = stmt.run(name, parseFloat(price), parseInt(stock), category || 'Pan dulce');
+        res.status(201).json({ message: "Producto creado exitosamente.", id: result.lastInsertRowid });
+    } catch (err) {
+        res.status(500).json({ message: "Error al crear producto: " + err.message });
+    }
+});
+
+// UPDATE: Editar / Actualizar producto existente
+app.put('/api/products/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, price, stock, category } = req.body;
+
+    try {
+        const stmt = db.prepare('UPDATE products SET name = ?, price = ?, stock = ?, category = ? WHERE id = ?');
+        const result = stmt.run(name, parseFloat(price), parseInt(stock), category, id);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ message: "Producto no encontrado." });
+        }
+        res.json({ message: "Producto actualizado correctamente." });
+    } catch (err) {
+        res.status(500).json({ message: "Error al actualizar producto: " + err.message });
+    }
+});
+
+// DELETE: Eliminar producto
+app.delete('/api/products/:id', (req, res) => {
+    const { id } = req.params;
+    try {
+        const stmt = db.prepare('DELETE FROM products WHERE id = ?');
+        const result = stmt.run(id);
+
+        if (result.changes === 0) {
+            return res.status(404).json({ message: "Producto no encontrado." });
+        }
+        res.json({ message: "Producto eliminado correctamente." });
+    } catch (err) {
+        res.status(500).json({ message: "Error al eliminar producto: " + err.message });
+    }
 });
 
 // POST /api/products/refill - Surtir / Rellenar stock de un pan existente
@@ -40,6 +101,10 @@ app.post('/api/products/refill', (req, res) => {
     res.json({ message: `Se agregaron ${stock} unidades a "${prod.name}". Nuevo stock: ${prod.stock + parseInt(stock)}` });
 });
 
+// ==========================================
+// 🔐 AUTENTICACIÓN
+// ==========================================
+
 // POST /api/login
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
@@ -52,6 +117,10 @@ app.post('/api/login', (req, res) => {
     const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, SECRET_KEY, { expiresIn: '8h' });
     res.json({ token, role: user.role, username: user.username, message: "Inicio de sesión exitoso" });
 });
+
+// ==========================================
+// 🛒 VENTAS Y CORTE DE CAJA
+// ==========================================
 
 // POST /api/sales - Registrar venta y descontar stock
 app.post('/api/sales', (req, res) => {
@@ -126,7 +195,6 @@ app.post('/api/sales/close-day', (req, res) => {
         }
     }
 
-    // Marcar las ventas abiertas como cerradas
     if (sales.length > 0) {
         db.prepare('UPDATE sales SET day_closed = 1 WHERE day_closed = 0').run();
     }
@@ -142,7 +210,7 @@ app.post('/api/sales/close-day', (req, res) => {
 });
 
 // =========================================================
-// 🚀 NUVAS RUTAS: MERMAS Y PREDICCIÓN DE PRODUCCIÓN
+// 🚀 MERMAS, MATRIZ Y PREDICCIÓN DE PRODUCCIÓN (DSS)
 // =========================================================
 
 // POST /api/waste - Registrar merma de productos
@@ -160,7 +228,6 @@ app.post('/api/waste', (req, res) => {
 
     const qty = parseInt(quantity);
 
-    // Guardar en log de mermas y descontar stock actual
     const recordWaste = db.transaction(() => {
         db.prepare('INSERT INTO waste_logs (product_id, product_name, quantity, reason) VALUES (?, ?, ?, ?)').run(prod.id, prod.name, qty, reason || 'Dañado/Vencido');
         db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?').run(qty, prod.id);
@@ -174,16 +241,68 @@ app.post('/api/waste', (req, res) => {
     }
 });
 
+// GET /api/reports/profitability-matrix - Matriz de Rentabilidad vs. Desperdicio
+app.get('/api/reports/profitability-matrix', (req, res) => {
+    try {
+        const products = db.prepare('SELECT * FROM products').all();
+        let allSaleItems = [];
+        let allWasteLogs = [];
+
+        try { allSaleItems = db.prepare('SELECT * FROM sale_items').all(); } catch (e) {}
+        try { allWasteLogs = db.prepare('SELECT * FROM waste_logs').all(); } catch (e) {}
+
+        const matrix = products.map(prod => {
+            const soldItems = allSaleItems.filter(item => 
+                (item.product_name && item.product_name === prod.name) || 
+                (item.product_id && item.product_id === prod.id)
+            );
+            const totalSold = soldItems.reduce((acc, curr) => acc + (curr.quantity || 1), 0);
+
+            const wasteItems = allWasteLogs.filter(w => w.product_id === prod.id);
+            const totalWasted = wasteItems.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+
+            let classification = 'Relleno';
+            let badgeColor = '#ffc107'; // Amarillo
+            let actionNote = 'Demanda estable. Mantener horneado habitual.';
+
+            if (totalSold >= 8 && totalWasted <= 2) {
+                classification = '⭐ Producto Estrella';
+                badgeColor = '#28a745'; // Verde
+                actionNote = 'Alta rotación y baja merma. Priorizar producción.';
+            } else if (totalWasted > totalSold || (totalWasted >= 4 && totalSold <= 3)) {
+                classification = '🚨 En Riesgo / Crítico';
+                badgeColor = '#dc3545'; // Rojo
+                actionNote = 'Mermas superan o igualan ventas. Reducir producción.';
+            }
+
+            return {
+                id: prod.id,
+                name: prod.name,
+                category: prod.category || 'Panadería',
+                total_sold: totalSold,
+                total_wasted: totalWasted,
+                classification: classification,
+                badge_color: badgeColor,
+                action_note: actionNote
+            };
+        });
+
+        res.json({ success: true, matrix });
+    } catch (err) {
+        console.error('Error calculando matriz de rentabilidad:', err);
+        res.status(500).json({ success: false, message: 'Error interno al generar matriz' });
+    }
+});
+
+// GET /api/reports/production-recommendation - Sugerencias de horneado (DSS)
 app.get('/api/reports/production-recommendation', (req, res) => {
     try {
-        // 1. Obtener todos los productos
         const products = db.prepare('SELECT * FROM products').all();
 
         if (!products || products.length === 0) {
             return res.json({ success: true, recommendations: [] });
         }
 
-        // 2. Obtener todas las piezas vendidas de la tabla sale_items
         let allSaleItems = [];
         try {
             allSaleItems = db.prepare('SELECT * FROM sale_items').all();
@@ -191,7 +310,6 @@ app.get('/api/reports/production-recommendation', (req, res) => {
             console.log('Tabla sale_items vacía o sin leer:', e.message);
         }
 
-        // 3. Obtener mermas
         let allWasteLogs = [];
         try {
             allWasteLogs = db.prepare('SELECT * FROM waste_logs').all();
@@ -199,7 +317,6 @@ app.get('/api/reports/production-recommendation', (req, res) => {
             console.log('Tabla waste_logs vacía o sin leer:', e.message);
         }
 
-        // 4. Calcular días activos de venta
         let activeDays = 1;
         try {
             const daysRow = db.prepare('SELECT COUNT(DISTINCT DATE(created_at)) as days FROM sales').get();
@@ -208,25 +325,19 @@ app.get('/api/reports/production-recommendation', (req, res) => {
             activeDays = 1;
         }
 
-        // 5. Mapear cada producto de forma segura
         const recommendations = products.map(prod => {
-            // Contar cuántas veces se vendió este producto (por nombre o id)
             const soldItems = allSaleItems.filter(item => 
                 (item.product_name && item.product_name === prod.name) || 
                 (item.product_id && item.product_id === prod.id)
             );
 
-            // Sumar cantidades vendidas
             const totalSold = soldItems.reduce((acc, curr) => acc + (curr.quantity || 1), 0);
 
-            // Sumar mermas
             const wasteItems = allWasteLogs.filter(w => w.product_id === prod.id);
             const totalWasted = wasteItems.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
-            // Promedio Diario
             const avgDailySales = parseFloat((totalSold / activeDays).toFixed(1));
 
-            // LÓGICA DE DIAGNÓSTICO Y RECOMENDACIÓN DE HORNEADO (DSS)
             let recommendedBaking = 0;
             let status = 'Normal';
             let alertColor = '#28a745'; // Verde
@@ -234,8 +345,6 @@ app.get('/api/reports/production-recommendation', (req, res) => {
             if (prod.stock <= 0) {
                 status = '🔥 AGOTADO / Crítico';
                 alertColor = '#dc3545'; // Rojo
-                
-                // Si vendió, sugiere lo vendido o el promedio + margen de seguridad
                 recommendedBaking = Math.max(totalSold, Math.ceil(avgDailySales * 1.2), 5);
             } else if (prod.stock <= 2) {
                 status = '⚠️ Stock Bajo';
@@ -243,7 +352,6 @@ app.get('/api/reports/production-recommendation', (req, res) => {
                 const target = Math.max(totalSold, Math.ceil(avgDailySales * 1.2), 6);
                 recommendedBaking = Math.max(0, target - prod.stock);
             } else {
-                // Stock Normal
                 const target = Math.max(totalSold, Math.ceil(avgDailySales));
                 recommendedBaking = Math.max(0, target - prod.stock);
             }
@@ -268,6 +376,7 @@ app.get('/api/reports/production-recommendation', (req, res) => {
         res.status(500).json({ success: false, message: 'Error en el servidor al procesar predicciones' });
     }
 });
+
 module.exports = app;
 
 if (require.main === module) {
