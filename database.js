@@ -2,7 +2,11 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'database.sqlite'));
+// Usar base de datos en memoria para el entorno de pruebas CI/Jest para evitar bloqueos y SegFaults
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.CI === 'true';
+const dbPath = isTestEnv ? ':memory:' : path.join(__dirname, 'database.sqlite');
+
+const db = new Database(dbPath);
 
 // Crear Tablas
 db.exec(`
@@ -49,7 +53,8 @@ db.exec(`
         FOREIGN KEY(product_id) REFERENCES products(id)
     );
 `);
-// Precargar Datos Iniciales con imágenes específicas
+
+// Precargar Datos Iniciales
 const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
 
 if (userCount === 0) {

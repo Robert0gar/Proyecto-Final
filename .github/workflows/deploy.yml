@@ -29,6 +29,7 @@ jobs:
       - name: Ejecutar Pruebas Automatizadas
         run: npm test
         env:
+          NODE_ENV: test
           CI: true
           JWT_SECRET: 'supersecret_jwt_key_test'
           PORT: 3000
