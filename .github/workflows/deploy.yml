@@ -8,17 +8,17 @@ on:
 
 jobs:
   test-and-coverage:
-    name: Pruebas Unitarias y Cobertura
+    name: Pruebas Unitarias
     runs-on: ubuntu-latest
 
     steps:
       - name: Clonar código del repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar entorno Node.js 20
+      - name: Configurar entorno Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
 
       - name: Instalar dependencias
         run: npm install
@@ -26,8 +26,8 @@ jobs:
       - name: Reconstruir sqlite nativo
         run: npm rebuild better-sqlite3
 
-      - name: Ejecutar Pruebas Automatizadas (Jest)
-        run: npm test -- --forceExit
+      - name: Ejecutar Pruebas Automatizadas
+        run: npm test
         env:
           CI: true
           JWT_SECRET: 'supersecret_jwt_key_test'

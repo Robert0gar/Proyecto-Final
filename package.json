@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --runInBand --coverage --detectOpenHandles"
+    "test": "jest --runInBand --forceExit",
+    "test:cov": "jest --runInBand --coverage --detectOpenHandles --forceExit"
   },
   "keywords": [],
   "author": "",
