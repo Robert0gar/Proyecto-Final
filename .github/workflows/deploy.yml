@@ -23,11 +23,11 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Reconstruir sqlite nativo
-        run: npm rebuild better-sqlite3
+      - name: Reconstruir SQLite y bcrypt
+        run: npm rebuild
 
       - name: Ejecutar Pruebas Automatizadas
-        run: npx jest --runInBand --no-worker-threads --forceExit
+        run: npm test
         env:
           NODE_ENV: test
           CI: true
