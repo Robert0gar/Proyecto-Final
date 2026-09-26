@@ -1,12 +1,29 @@
 let cart = []; // Estructura: [{ id, name, price, qty }]
 let total = 0;
-let currentUser = null;
-let currentRole = null;
+let currentUser = localStorage.getItem('username') || null;
+let currentRole = localStorage.getItem('userRole') || null;
 let isViewingAdminPanel = false;
 let globalProductsList = [];
 
+// Helper para iti authenticated headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('jwtToken');
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+}
+
+// Auto session recovery iti panagkarga ti pag-iskeran
+window.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('jwtToken');
+    if (token && currentUser) {
+        initUserSession();
+    }
+});
+
 // ==========================================================================
-// PANTALLA EMERGENTE PERSONALIZADA (MODAL REEMPLAZO DE ALERT)
+// PANTALLA EMERGENTE PERSONALIZADA
 // ==========================================================================
 function showCustomAlert(message, title = 'Notificación', icon = '💡') {
     const alertModal = document.getElementById('custom-alert-modal');
@@ -36,7 +53,7 @@ function closeCustomAlert() {
 // ==========================================================================
 async function loadProductsFromDB() {
     try {
-        const response = await fetch('/api/products');
+        const response = await fetch('/api/products', { headers: getAuthHeaders() });
         globalProductsList = await response.json();
         
         const container = document.getElementById('products-container');
@@ -63,7 +80,7 @@ async function loadProductsFromDB() {
 }
 
 // ==========================================================================
-// CARRITO DE COMPRAS CON EDICIÓN Y ELIMINACIÓN
+// CARRITO DE COMPRAS
 // ==========================================================================
 function addToCart(productId) {
     const id = parseInt(productId);
@@ -187,7 +204,6 @@ async function checkout() {
         return;
     }
 
-    // Convertir el carrito agrupado a la lista plana requerida por el backend si es necesario
     const flatItems = [];
     cart.forEach(item => {
         for (let i = 0; i < item.qty; i++) {
@@ -198,7 +214,7 @@ async function checkout() {
     try {
         const response = await fetch('/api/sales', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 items: flatItems,
                 total: total,
@@ -228,7 +244,7 @@ async function checkout() {
 }
 
 // ==========================================================================
-// DESPLEGABLES DE FORMULARIOS
+// DESPLEGABLES
 // ==========================================================================
 function populateRefillSelect() {
     const select = document.getElementById('select-product-refill');
@@ -263,53 +279,62 @@ function populateWasteSelect() {
 // ==========================================================================
 // AUTENTICACIÓN Y SESIÓN
 // ==========================================================================
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const usernameInput = document.getElementById('username').value;
-    const passwordInput = document.getElementById('password').value;
-    const errorDiv = document.getElementById('login-error');
+const loginForm = document.getElementById('login-form');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const usernameInput = document.getElementById('username').value;
+        const passwordInput = document.getElementById('password').value;
+        const errorDiv = document.getElementById('login-error');
 
-    try {
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usernameInput, password: passwordInput })
-        });
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameInput, password: passwordInput })
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (response.ok) {
-            currentUser = data.username;
-            currentRole = data.role;
+            if (response.ok) {
+                currentUser = data.username;
+                currentRole = data.role;
 
-            localStorage.setItem('jwtToken', data.token);
-            localStorage.setItem('userRole', data.role);
-            localStorage.setItem('username', data.username);
+                localStorage.setItem('jwtToken', data.token);
+                localStorage.setItem('userRole', data.role);
+                localStorage.setItem('username', data.username);
 
-            initUserSession();
-        } else {
-            errorDiv.textContent = data.message || 'Error en el inicio de sesión';
+                initUserSession();
+            } else {
+                errorDiv.textContent = data.message || 'Error en el inicio de sesión';
+            }
+        } catch (err) {
+            errorDiv.textContent = 'No se pudo conectar con el servidor backend';
         }
-    } catch (err) {
-        errorDiv.textContent = 'No se pudo conectar con el servidor backend';
-    }
-});
+    });
+}
 
 function initUserSession() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('hidden');
-    document.getElementById('user-display').textContent = `Usuario: ${currentUser} (${currentRole})`;
+    const loginScreen = document.getElementById('login-screen');
+    const mainScreen = document.getElementById('main-screen');
+    const userDisplay = document.getElementById('user-display');
+
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (mainScreen) mainScreen.classList.remove('hidden');
+    if (userDisplay) userDisplay.textContent = `Usuario: ${currentUser} (${currentRole})`;
 
     loadProductsFromDB();
 
     const toggleBtn = document.getElementById('view-toggle-btn');
-    if (currentRole === 'administrador') {
-        toggleBtn.classList.remove('hidden');
-        showAdminDashboard();
-    } else {
-        toggleBtn.classList.add('hidden');
-        showPOSView();
+    if (toggleBtn) {
+        if (currentRole === 'administrador') {
+            toggleBtn.classList.remove('hidden');
+            showAdminDashboard();
+        } else {
+            toggleBtn.classList.add('hidden');
+            showPOSView();
+        }
     }
 }
 
@@ -323,17 +348,19 @@ function toggleAdminView() {
 
 function showPOSView() {
     isViewingAdminPanel = false;
-    document.getElementById('pos-view').classList.remove('hidden');
-    document.getElementById('admin-view').classList.add('hidden');
-    document.getElementById('view-toggle-btn').textContent = "Ver Reportes Admin";
+    document.getElementById('pos-view')?.classList.remove('hidden');
+    document.getElementById('admin-view')?.classList.add('hidden');
+    const toggleBtn = document.getElementById('view-toggle-btn');
+    if (toggleBtn) toggleBtn.textContent = "Ver Reportes Admin";
     loadProductsFromDB();
 }
 
 async function showAdminDashboard() {
     isViewingAdminPanel = true;
-    document.getElementById('pos-view').classList.add('hidden');
-    document.getElementById('admin-view').classList.remove('hidden');
-    document.getElementById('view-toggle-btn').textContent = "Ir a Caja Registradora";
+    document.getElementById('pos-view')?.classList.add('hidden');
+    document.getElementById('admin-view')?.classList.remove('hidden');
+    const toggleBtn = document.getElementById('view-toggle-btn');
+    if (toggleBtn) toggleBtn.textContent = "Ir a Caja Registradora";
     
     await loadProductsFromDB();
     await fetchSalesReports();
@@ -342,11 +369,11 @@ async function showAdminDashboard() {
 }
 
 // ==========================================================================
-// REPORTES Y MÓDULOS DE DECISIÓN (DSS)
+// REPORTES
 // ==========================================================================
 async function fetchSalesReports() {
     try {
-        const response = await fetch('/api/sales');
+        const response = await fetch('/api/sales', { headers: getAuthHeaders() });
         const data = await response.json();
         const sales = data.sales || [];
 
@@ -357,9 +384,9 @@ async function fetchSalesReports() {
 
         if (sales.length === 0) {
             if (tableBody) tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay ventas hoy.</td></tr>';
-            document.getElementById('total-revenue').textContent = '$0.00';
-            document.getElementById('total-tickets').textContent = '0';
-            document.getElementById('top-product').textContent = '---';
+            if (document.getElementById('total-revenue')) document.getElementById('total-revenue').textContent = '$0.00';
+            if (document.getElementById('total-tickets')) document.getElementById('total-tickets').textContent = '0';
+            if (document.getElementById('top-product')) document.getElementById('top-product').textContent = '---';
             return;
         }
 
@@ -393,9 +420,9 @@ async function fetchSalesReports() {
             }
         }
 
-        document.getElementById('total-revenue').textContent = `$${revenue.toFixed(2)}`;
-        document.getElementById('total-tickets').textContent = sales.length;
-        document.getElementById('top-product').textContent = topProd;
+        if (document.getElementById('total-revenue')) document.getElementById('total-revenue').textContent = `$${revenue.toFixed(2)}`;
+        if (document.getElementById('total-tickets')) document.getElementById('total-tickets').textContent = sales.length;
+        if (document.getElementById('top-product')) document.getElementById('top-product').textContent = topProd;
 
     } catch (err) {
         console.error('Error al obtener reportes:', err);
@@ -407,7 +434,7 @@ async function fetchProfitabilityMatrix() {
     if (!tableBody) return;
 
     try {
-        const response = await fetch('/api/reports/profitability-matrix');
+        const response = await fetch('/api/reports/profitability-matrix', { headers: getAuthHeaders() });
         const data = await response.json();
 
         if (data.success && data.matrix.length > 0) {
@@ -438,7 +465,7 @@ async function fetchProductionRecommendations() {
     if (!tableBody) return;
 
     try {
-        const response = await fetch('/api/reports/production-recommendation');
+        const response = await fetch('/api/reports/production-recommendation', { headers: getAuthHeaders() });
         const data = await response.json();
 
         if (data.success && data.recommendations.length > 0) {
@@ -466,34 +493,37 @@ async function fetchProductionRecommendations() {
 // ==========================================================================
 // ACCIONES DE REABASTECIMIENTO Y MERMA
 // ==========================================================================
-document.getElementById('refill-product-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const refillForm = document.getElementById('refill-product-form');
+if (refillForm) {
+    refillForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const productId = document.getElementById('select-product-refill').value;
-    const stock = parseInt(document.getElementById('refill-stock-qty').value);
+        const productId = document.getElementById('select-product-refill').value;
+        const stock = parseInt(document.getElementById('refill-stock-qty').value);
 
-    try {
-        const response = await fetch('/api/products/refill', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId, stock })
-        });
+        try {
+            const response = await fetch('/api/products/refill', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ productId, stock })
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (response.ok) {
-            showCustomAlert(data.message, '¡Inventario Actualizado!', '🥖');
-            document.getElementById('refill-product-form').reset();
-            await loadProductsFromDB();
-            await fetchProfitabilityMatrix();
-            await fetchProductionRecommendations();
-        } else {
-            showCustomAlert(data.message || 'Error al surtir el producto.', 'Error', '❌');
+            if (response.ok) {
+                showCustomAlert(data.message, '¡Inventario Actualizado!', '🥖');
+                refillForm.reset();
+                await loadProductsFromDB();
+                await fetchProfitabilityMatrix();
+                await fetchProductionRecommendations();
+            } else {
+                showCustomAlert(data.message || 'Error al surtir el producto.', 'Error', '❌');
+            }
+        } catch (err) {
+            showCustomAlert('Error de conexión al actualizar el inventario.', 'Error de Conexión', '🌐');
         }
-    } catch (err) {
-        showCustomAlert('Error de conexión al actualizar el inventario.', 'Error de Conexión', '🌐');
-    }
-});
+    });
+}
 
 const wasteForm = document.getElementById('waste-product-form');
 if (wasteForm) {
@@ -507,7 +537,7 @@ if (wasteForm) {
         try {
             const response = await fetch('/api/waste', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ productId, quantity, reason })
             });
 
@@ -535,7 +565,10 @@ async function closeDay() {
     if (!confirm('¿Estás seguro de finalizar la jornada? Se generará el corte del día.')) return;
 
     try {
-        const response = await fetch('/api/sales/close-day', { method: 'POST' });
+        const response = await fetch('/api/sales/close-day', { 
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -554,7 +587,7 @@ async function closeDay() {
                     .join('');
             }
 
-            document.getElementById('close-day-modal').classList.remove('hidden');
+            document.getElementById('close-day-modal')?.classList.remove('hidden');
         } else {
             showCustomAlert(data.message, 'Atención', '⚠️');
         }
@@ -564,13 +597,16 @@ async function closeDay() {
 }
 
 function dismissModal() {
-    document.getElementById('close-day-modal').classList.add('hidden');
+    document.getElementById('close-day-modal')?.classList.add('hidden');
     fetchSalesReports();
     fetchProfitabilityMatrix();
     fetchProductionRecommendations();
 }
 
-document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.clear();
-    location.reload();
-});
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+        localStorage.clear();
+        location.reload();
+    });
+}

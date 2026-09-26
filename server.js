@@ -11,31 +11,91 @@ app.use(cors());
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const SECRET_KEY = "migajas_pati_clave_secreta_2026";
+const SECRET_KEY = process.env.JWT_SECRET || "migajas_pati_clave_secreta_2026";
 
+// ==========================================
+// 🛡️ MIDDLEWARES DE AUTENTICACIÓN Y ROLES
+// ==========================================
+
+// Middleware 1: Verificar Token JWT
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Formato: "Bearer TOKEN"
+
+    if (!token) {
+        return res.status(401).json({ message: "Acceso denegado: Token JWT no proporcionado." });
+    }
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: "Token inválido o expirado." });
+        }
+        req.user = user;
+        next();
+    });
+}
+
+// Middleware 2: Verificar Rol de Administrador
+function requireRole(requiredRole) {
+    return (req, res, next) => {
+        if (!req.user || req.user.role !== requiredRole) {
+            return res.status(403).json({ message: `Acceso restringido: requiere rol de ${requiredRole}.` });
+        }
+        next();
+    };
+}
+
+// Servir la vista principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ==========================================
+// 🔐 AUTENTICACIÓN
+// ==========================================
+
+// POST /api/login
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: "Usuario y contraseña requeridos." });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ message: "Credenciales inválidas." });
+    }
+
+    const token = jwt.sign(
+        { id: user.id, role: user.role, username: user.username },
+        SECRET_KEY,
+        { expiresIn: '8h' }
+    );
+
+    res.json({ token, role: user.role, username: user.username, message: "Inicio de sesión exitoso" });
 });
 
 // ==========================================
 // 📦 RUTAS DE PRODUCTOS (CRUD COMPLETO)
 // ==========================================
 
-// READ: Obtener catálogo de productos
+// READ: Obtener catálogo de productos (Público)
 app.get('/api/products', (req, res) => {
     const products = db.prepare('SELECT * FROM products').all();
     res.json(products);
 });
 
-// READ: Obtener un producto por ID
+// READ: Obtener un producto por ID (Público)
 app.get('/api/products/:id', (req, res) => {
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
     if (!product) return res.status(404).json({ message: "Producto no encontrado." });
     res.json(product);
 });
 
-// CREATE: Crear nuevo producto
-app.post('/api/products', (req, res) => {
+// CREATE: Crear nuevo producto (Protegido - Solo Admin)
+app.post('/api/products', authenticateToken, requireRole('administrador'), (req, res) => {
     const { name, price, stock, category } = req.body;
     if (!name || price === undefined || stock === undefined) {
         return res.status(400).json({ message: "Nombre, precio y stock son requeridos." });
@@ -50,8 +110,8 @@ app.post('/api/products', (req, res) => {
     }
 });
 
-// UPDATE: Editar / Actualizar producto existente
-app.put('/api/products/:id', (req, res) => {
+// UPDATE: Editar / Actualizar producto (Protegido - Solo Admin)
+app.put('/api/products/:id', authenticateToken, requireRole('administrador'), (req, res) => {
     const { id } = req.params;
     const { name, price, stock, category } = req.body;
 
@@ -68,8 +128,8 @@ app.put('/api/products/:id', (req, res) => {
     }
 });
 
-// DELETE: Eliminar producto
-app.delete('/api/products/:id', (req, res) => {
+// DELETE: Eliminar producto (Protegido - Solo Admin)
+app.delete('/api/products/:id', authenticateToken, requireRole('administrador'), (req, res) => {
     const { id } = req.params;
     try {
         const stmt = db.prepare('DELETE FROM products WHERE id = ?');
@@ -84,8 +144,8 @@ app.delete('/api/products/:id', (req, res) => {
     }
 });
 
-// POST /api/products/refill - Surtir / Rellenar stock de un pan existente
-app.post('/api/products/refill', (req, res) => {
+// POST /api/products/refill - Surtir / Rellenar stock (Protegido - Solo Admin)
+app.post('/api/products/refill', authenticateToken, requireRole('administrador'), (req, res) => {
     const { productId, stock } = req.body;
     
     if (!productId || stock === undefined || parseInt(stock) <= 0) {
@@ -102,32 +162,15 @@ app.post('/api/products/refill', (req, res) => {
 });
 
 // ==========================================
-// 🔐 AUTENTICACIÓN
-// ==========================================
-
-// POST /api/login
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-        return res.status(401).json({ message: "Credenciales inválidas" });
-    }
-
-    const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, SECRET_KEY, { expiresIn: '8h' });
-    res.json({ token, role: user.role, username: user.username, message: "Inicio de sesión exitoso" });
-});
-
-// ==========================================
 // 🛒 VENTAS Y CORTE DE CAJA
 // ==========================================
 
-// POST /api/sales - Registrar venta y descontar stock
-app.post('/api/sales', (req, res) => {
+// POST /api/sales - Registrar venta (Protegido - Cualquier usuario autenticado)
+app.post('/api/sales', authenticateToken, (req, res) => {
     const { items, total, cashier } = req.body;
 
     if (!items || items.length === 0) {
-        return res.status(400).json({ message: "La venta debe incluir productos" });
+        return res.status(400).json({ message: "La venta debe incluir productos." });
     }
 
     const processTransaction = db.transaction(() => {
@@ -140,7 +183,7 @@ app.post('/api/sales', (req, res) => {
 
         const createdAt = new Date().toLocaleString();
         const insertSale = db.prepare('INSERT INTO sales (total, cashier, created_at, day_closed) VALUES (?, ?, ?, 0)');
-        const saleResult = insertSale.run(total, cashier || 'Desconocido', createdAt);
+        const saleResult = insertSale.run(total, cashier || req.user.username || 'Cajero', createdAt);
         const saleId = saleResult.lastInsertRowid;
 
         const insertItem = db.prepare('INSERT INTO sale_items (sale_id, product_name, price) VALUES (?, ?, ?)');
@@ -162,8 +205,8 @@ app.post('/api/sales', (req, res) => {
     }
 });
 
-// GET /api/sales - Historial de ventas del día en curso
-app.get('/api/sales', (req, res) => {
+// GET /api/sales - Historial de ventas del día (Protegido)
+app.get('/api/sales', authenticateToken, (req, res) => {
     const sales = db.prepare('SELECT * FROM sales WHERE day_closed = 0 ORDER BY id DESC').all();
     
     const detailedSales = sales.map(sale => {
@@ -180,8 +223,8 @@ app.get('/api/sales', (req, res) => {
     res.json({ sales: detailedSales });
 });
 
-// POST /api/sales/close-day - Finalizar jornada aunque no haya ventas
-app.post('/api/sales/close-day', (req, res) => {
+// POST /api/sales/close-day - Finalizar jornada (Protegido - Solo Admin)
+app.post('/api/sales/close-day', authenticateToken, requireRole('administrador'), (req, res) => {
     const sales = db.prepare('SELECT * FROM sales WHERE day_closed = 0').all();
 
     let totalRevenue = 0;
@@ -213,8 +256,8 @@ app.post('/api/sales/close-day', (req, res) => {
 // 🚀 MERMAS, MATRIZ Y PREDICCIÓN DE PRODUCCIÓN (DSS)
 // =========================================================
 
-// POST /api/waste - Registrar merma de productos
-app.post('/api/waste', (req, res) => {
+// POST /api/waste - Registrar merma (Protegido - Solo Admin)
+app.post('/api/waste', authenticateToken, requireRole('administrador'), (req, res) => {
     const { productId, quantity, reason } = req.body;
 
     if (!productId || !quantity || parseInt(quantity) <= 0) {
@@ -241,8 +284,8 @@ app.post('/api/waste', (req, res) => {
     }
 });
 
-// GET /api/reports/profitability-matrix - Matriz de Rentabilidad vs. Desperdicio
-app.get('/api/reports/profitability-matrix', (req, res) => {
+// GET /api/reports/profitability-matrix - Matriz de Rentabilidad (Protegido - Solo Admin)
+app.get('/api/reports/profitability-matrix', authenticateToken, requireRole('administrador'), (req, res) => {
     try {
         const products = db.prepare('SELECT * FROM products').all();
         let allSaleItems = [];
@@ -294,8 +337,8 @@ app.get('/api/reports/profitability-matrix', (req, res) => {
     }
 });
 
-// GET /api/reports/production-recommendation - Sugerencias de horneado (DSS)
-app.get('/api/reports/production-recommendation', (req, res) => {
+// GET /api/reports/production-recommendation - Sugerencias de horneado (Protegido - Solo Admin)
+app.get('/api/reports/production-recommendation', authenticateToken, requireRole('administrador'), (req, res) => {
     try {
         const products = db.prepare('SELECT * FROM products').all();
 
@@ -380,7 +423,8 @@ app.get('/api/reports/production-recommendation', (req, res) => {
 module.exports = app;
 
 if (require.main === module) {
-    app.listen(3000, () => {
-        console.log('Servidor corriendo en http://localhost:3000');
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
 }

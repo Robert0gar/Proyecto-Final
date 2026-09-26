@@ -1,0 +1,63 @@
+name: CI/CD Pipeline - Migajas Pati
+
+# Disparadores del Workflow
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ==========================================
+  # FASE 1: INTEGRACIÓN CONTINUA (CI)
+  # ==========================================
+  test-and-coverage:
+    name: Pruebas Unitarias y Cobertura
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Clonar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar Pruebas Automatizadas y Cobertura (Jest)
+        run: npm test
+        env:
+          CI: true
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'supersecret_jwt_key_test' }}
+          PORT: 3000
+
+  # ==========================================
+  # FASE 2: ENTREGA / DESPLIEGUE CONTINUO (CD)
+  # ==========================================
+  deploy-staging:
+    name: Despliegue Automático en Entorno de Pruebas
+    needs: test-and-coverage
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Clonar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Simulación de Despliegue en Servidor de Pruebas (Staging)
+        run: |
+          echo "=================================================="
+          echo "Iniciando Despliegue en Servidor de Staging..."
+          echo "Rama desplegada: ${{ github.ref }}"
+          echo "Commit Hash: ${{ github.sha }}"
+          echo "Verificando artefactos de construcción..."
+          echo "Despliegue simulado exitosamente en el entorno de pruebas."
+          echo "=================================================="
