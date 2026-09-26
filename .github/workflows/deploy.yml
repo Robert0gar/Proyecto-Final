@@ -15,16 +15,19 @@ jobs:
       - name: Clonar código del repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar entorno Node.js 18
+      - name: Configurar entorno Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Instalar dependencias
         run: npm install
 
+      - name: Reconstruir sqlite nativo
+        run: npm rebuild better-sqlite3
+
       - name: Ejecutar Pruebas Automatizadas (Jest)
-        run: npm test
+        run: npm test -- --forceExit
         env:
           CI: true
           JWT_SECRET: 'supersecret_jwt_key_test'
