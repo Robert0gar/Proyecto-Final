@@ -1,52 +1,40 @@
 name: CI/CD Pipeline - Migajas Pati
 
-# Disparadores del Workflow
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
 
 jobs:
-  # ==========================================
-  # FASE 1: INTEGRACIÓN CONTINUA (CI)
-  # ==========================================
   test-and-coverage:
     name: Pruebas Unitarias y Cobertura
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
 
     steps:
       - name: Clonar código del repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar entorno Node.js ${{ matrix.node-version }}
+      - name: Configurar entorno Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          node-version: '18'
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
-      - name: Ejecutar Pruebas Automatizadas y Cobertura (Jest)
+      - name: Ejecutar Pruebas Automatizadas (Jest)
         run: npm test
         env:
           CI: true
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'supersecret_jwt_key_test' }}
+          JWT_SECRET: 'supersecret_jwt_key_test'
           PORT: 3000
 
-  # ==========================================
-  # FASE 2: ENTREGA / DESPLIEGUE CONTINUO (CD)
-  # ==========================================
   deploy-staging:
     name: Despliegue Automático en Entorno de Pruebas
     needs: test-and-coverage
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push'
 
     steps:
       - name: Clonar código del repositorio
@@ -57,7 +45,5 @@ jobs:
           echo "=================================================="
           echo "Iniciando Despliegue en Servidor de Staging..."
           echo "Rama desplegada: ${{ github.ref }}"
-          echo "Commit Hash: ${{ github.sha }}"
-          echo "Verificando artefactos de construcción..."
           echo "Despliegue simulado exitosamente en el entorno de pruebas."
           echo "=================================================="
