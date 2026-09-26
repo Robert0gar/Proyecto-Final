@@ -15,16 +15,16 @@ jobs:
       - name: Clonar código del repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar entorno Node.js 18
+      - name: Configurar entorno Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Instalar dependencias
         run: npm install
 
-      - name: Reconstruir SQLite y bcrypt
-        run: npm rebuild
+      - name: Reconstruir módulos nativos
+        run: npm rebuild better-sqlite3
 
       - name: Ejecutar Pruebas Automatizadas
         run: npm test
