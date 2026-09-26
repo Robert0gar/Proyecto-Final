@@ -27,7 +27,7 @@ jobs:
         run: npm rebuild better-sqlite3
 
       - name: Ejecutar Pruebas Automatizadas
-        run: npm test
+        run: npx jest --runInBand --no-worker-threads --forceExit
         env:
           NODE_ENV: test
           CI: true
