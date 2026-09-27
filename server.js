@@ -420,11 +420,15 @@ app.get('/api/reports/production-recommendation', authenticateToken, requireRole
     }
 });
 
+// ==========================================
+// 🚀 EXPORTACIÓN Y ARRANQUE DEL SERVIDOR
+// ==========================================
+
 module.exports = app;
 
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Servidor de MigajasPaTi ejecutándose correctamente en el puerto ${PORT}`);
     });
 }
